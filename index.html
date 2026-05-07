@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HelloFresh · Recipe 1029 Surcharge Removal Impact Analysis</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap');
+
+  :root {
+    --bg: #f7f5f0;
+    --surface: #ffffff;
+    --surface2: #f0ede6;
+    --border: rgba(0,0,0,0.09);
+    --border-mid: rgba(0,0,0,0.15);
+    --text: #1a1a18;
+    --text-2: #5a5850;
+    --text-3: #9a9890;
+    --hf-red: #d4291a;
+    --hf-red-light: #fdf0ee;
+    --green: #1a7a50;
+    --green-light: #eaf4ee;
+    --amber: #b86a10;
+    --amber-light: #fdf3e3;
+    --blue: #1f5fa6;
+    --blue-light: #eaf1fb;
+    --radius: 12px;
+    --radius-sm: 6px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 15px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* ── Header ─────────────────────────────────────────────── */
+  .header {
+    background: var(--text);
+    color: #f7f5f0;
+    padding: 48px 56px 40px;
+    position: relative;
+    overflow: hidden;
+  }
+  .header::before {
+    content: '';
+    position: absolute;
+    top: -60px; right: -60px;
+    width: 320px; height: 320px;
+    border-radius: 50%;
+    background: rgba(212,41,26,0.15);
+  }
+  .header-eyebrow {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: rgba(247,245,240,0.45);
+    margin-bottom: 14px;
+  }
+  .header-title {
+    font-family: 'Instrument Serif', serif;
+    font-size: 38px;
+    font-weight: 400;
+    line-height: 1.2;
+    margin-bottom: 10px;
+    color: #f7f5f0;
+  }
+  .header-title em {
+    font-style: italic;
+    color: #e8796e;
+  }
+  .header-sub {
+    font-size: 14px;
+    color: rgba(247,245,240,0.55);
+    max-width: 560px;
+    line-height: 1.6;
+  }
+  .header-meta {
+    display: flex;
+    gap: 28px;
+    margin-top: 28px;
+    flex-wrap: wrap;
+  }
+  .header-meta-item {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: rgba(247,245,240,0.4);
+    letter-spacing: 0.06em;
+  }
+  .header-meta-item span {
+    display: block;
+    font-size: 16px;
+    font-weight: 500;
+    color: rgba(247,245,240,0.85);
+    font-family: 'DM Sans', sans-serif;
+    margin-top: 2px;
+  }
+
+  /* ── Layout ─────────────────────────────────────────────── */
+  .main { max-width: 1080px; margin: 0 auto; padding: 48px 40px 80px; }
+  .section { margin-bottom: 52px; }
+  .section-header {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border-mid);
+  }
+  .section-num {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--hf-red);
+    letter-spacing: 0.08em;
+    flex-shrink: 0;
+  }
+  .section-title {
+    font-family: 'Instrument Serif', serif;
+    font-size: 22px;
+    font-weight: 400;
+    color: var(--text);
+  }
+
+  /* ── KPI grid ───────────────────────────────────────────── */
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .kpi-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .kpi {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+  }
+  .kpi-label {
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-3);
+    margin-bottom: 8px;
+  }
+  .kpi-val {
+    font-size: 28px;
+    font-weight: 300;
+    color: var(--text);
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+  .kpi-val strong { font-weight: 500; }
+  .kpi-sub { font-size: 12px; color: var(--text-3); }
+  .up { color: var(--green); }
+  .down { color: var(--hf-red); }
+  .neu { color: var(--text-3); }
+
+  /* ── Card ────────────────────────────────────────────────── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px 28px;
+    margin-bottom: 14px;
+  }
+  .card-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .col2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .col3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+
+  /* ── Badge ───────────────────────────────────────────────── */
+  .badge {
+    font-size: 10px;
+    font-family: 'DM Mono', monospace;
+    padding: 2px 7px;
+    border-radius: 20px;
+    letter-spacing: 0.04em;
+  }
+  .badge-warn { background: var(--amber-light); color: var(--amber); }
+  .badge-ok { background: var(--green-light); color: var(--green); }
+  .badge-info { background: var(--blue-light); color: var(--blue); }
+  .badge-red { background: var(--hf-red-light); color: var(--hf-red); }
+
+  /* ── Legend ──────────────────────────────────────────────── */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 12px;
+    font-size: 12px;
+    color: var(--text-2);
+  }
+  .leg { display: flex; align-items: center; gap: 6px; }
+  .leg-sq { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+  .leg-dash {
+    width: 18px; height: 2px;
+    border-top: 2px dashed;
+    flex-shrink: 0;
+  }
+
+  /* ── Insight callouts ────────────────────────────────────── */
+  .insight-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .insight {
+    border-left: 3px solid;
+    padding: 12px 14px;
+    background: var(--surface2);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  }
+  .insight-title { font-size: 13px; font-weight: 500; margin-bottom: 5px; color: var(--text); }
+  .insight-body { font-size: 12px; color: var(--text-2); line-height: 1.55; }
+
+  /* ── Revenue table ───────────────────────────────────────── */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { font-size: 11px; font-family: 'DM Mono', monospace; font-weight: 500; color: var(--text-3); text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border-mid); letter-spacing: 0.04em; text-transform: uppercase; }
+  td { padding: 9px 12px; border-bottom: 1px solid var(--border); color: var(--text); }
+  tr:last-child td { border-bottom: none; }
+  .total-row td { font-weight: 500; border-top: 1.5px solid var(--border-mid); background: var(--surface2); }
+
+  /* ── Note box ────────────────────────────────────────────── */
+  .note {
+    background: var(--surface2);
+    border-radius: var(--radius-sm);
+    padding: 12px 16px;
+    font-size: 12px;
+    color: var(--text-2);
+    line-height: 1.6;
+    margin-top: 14px;
+  }
+  .note strong { color: var(--text); font-weight: 500; }
+
+  /* ── Chart wrapper ───────────────────────────────────────── */
+  .chart-wrap { position: relative; width: 100%; }
+
+  /* ── Divider ─────────────────────────────────────────────── */
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border-mid);
+    margin: 48px 0;
+  }
+
+  /* ── Footer ──────────────────────────────────────────────── */
+  .footer {
+    background: var(--text);
+    padding: 28px 56px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: rgba(247,245,240,0.3);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    letter-spacing: 0.06em;
+  }
+
+  @media (max-width: 720px) {
+    .header { padding: 32px 24px 28px; }
+    .main { padding: 32px 20px 60px; }
+    .kpi-grid, .kpi-grid-3 { grid-template-columns: 1fr 1fr; }
+    .col2, .col3, .insight-grid { grid-template-columns: 1fr; }
+    .header-title { font-size: 28px; }
+    .footer { flex-direction: column; gap: 8px; text-align: center; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-eyebrow">HelloFresh Canada · Product Analytics · Confidential</div>
+  <h1 class="header-title">Salmon Recipe 1029<br><em>Surcharge Removal Impact Analysis</em></h1>
+  <p class="header-sub">A look at how removing the $3.99 surcharge in 2026 Week 1 impacted uptake, first-time trials, and post-cook satisfaction.</p>
+  <div class="header-meta">
+    <div class="header-meta-item">Period<span>2026 W1 to W16</span></div>
+    <div class="header-meta-item">Baseline<span>2025 W1 to W16 (same calendar window, prior year)</span></div>
+    <div class="header-meta-item">Intervention<span>No surcharge + "No Extra Cost" tag</span></div>
+    <div class="header-meta-item">Marketing<span>None</span></div>
+  </div>
+</div>
+
+<div class="main">
+
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num">01</span>
+      <h2 class="section-title">Headline metrics: pre vs. post</h2>
+    </div>
+    <div class="kpi-grid" style="margin-bottom:12px;">
+      <div class="kpi">
+        <div class="kpi-label">Avg weekly uptake</div>
+        <div class="kpi-val"><strong>3.52%</strong></div>
+        <div class="kpi-sub up">↑ +79% · baseline 1.97%</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Avg weekly recipe orders</div>
+        <div class="kpi-val"><strong>3,112</strong></div>
+        <div class="kpi-sub up">↑ +78% · baseline 1,752/wk</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Avg first-time orders / week</div>
+        <div class="kpi-val"><strong>2,382</strong></div>
+        <div class="kpi-sub up">↑ +84% · baseline 1,297/wk</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Non-spike avg uptake</div>
+        <div class="kpi-val"><strong>2.70%</strong></div>
+        <div class="kpi-sub neu">vs 2.09% baseline excl. spikes</div>
+      </div>
+    </div>
+    <div class="kpi-grid-3">
+      <div class="kpi">
+        <div class="kpi-label">Forgone surcharge revenue</div>
+        <div class="kpi-val"><strong>$355K</strong></div>
+        <div class="kpi-sub down">$22,200/wk × 16 weeks</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Avg post-cook rating</div>
+        <div class="kpi-val"><strong>4.24</strong></div>
+        <div class="kpi-sub down">↓ -0.09 vs 4.33 baseline</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Spike weeks recipe</div>
+        <div class="kpi-val" style="font-size:14px;"><strong>Sticky Bang Bang</strong></div>
+        <div class="kpi-sub neu">W04, W08, W15: same recipe</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num">02</span>
+      <h2 class="section-title">Weekly uptake: year-over-year comparison</h2>
+    </div>
+    <div class="card">
+      <div class="legend">
+        <span class="leg"><span class="leg-sq" style="background:#9a9890;"></span>2025 W1-W16 (surcharged, same calendar window)</span>
+        <span class="leg"><span class="leg-sq" style="background:#1a1a18;"></span>2026 W1-W16 (no surcharge)</span>
+        <span class="leg"><span class="leg-sq" style="background:#d4291a;border-radius:50%;width:10px;height:10px;"></span>Spike weeks (W04, W08, W15)</span>
+      </div>
+      <div class="chart-wrap" style="height:240px;">
+        <canvas id="uptakeChart"></canvas>
+      </div>
+      <div class="note">
+        The baseline is 2025 W1-W16 (the same 16-week calendar window one year prior) to control for seasonality. Post-period average uptake is 3.5% vs baseline 2.0%, which is a +1.6 ppt lift. The <strong>spike weeks (W04 at 8.3%, W08 at 6.3%, W15 at 6.6%)</strong> are all driven by the same recipe: <strong>Sticky Bang Bang Salmon Bowls</strong>. This slot 1029 recipe appeared 4 times in the 2025 baseline at normal uptake (2.1% to 3.5%). This confirms people really want this specific recipe, rather than this just being a price-removal effect. If you exclude these three weeks, the true like-for-like post-period average is 2.7% vs 2.09% baseline. That gives us a cleaner <strong>+0.6 ppt lift</strong> from the surcharge removal alone. Hover over any data point to see the recipe name.
+      </div>
+    </div>
+    <div class="col2" style="margin-top:14px;">
+      <div class="card">
+        <div class="card-title">Uptake by subscription type <span class="badge badge-info">2025 vs 2026 W1-W16</span></div>
+        <div class="legend">
+          <span class="leg"><span class="leg-sq" style="background:#9a9890;"></span>Pre (2025)</span>
+          <span class="leg"><span class="leg-sq" style="background:#1a1a18;"></span>Post (2026)</span>
+        </div>
+        <div class="chart-wrap" style="height:300px;">
+          <canvas id="subChart" role="img" aria-label="Horizontal bar chart comparing subscription-type uptake pre and post removal. Pescatarian and Beeffree highest at ~8.8%."></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Uptake by loyalty bucket <span class="badge badge-info">2025 vs 2026 W1-W16</span></div>
+        <div class="legend">
+          <span class="leg"><span class="leg-sq" style="background:#9a9890;"></span>Pre (2025)</span>
+          <span class="leg"><span class="leg-sq" style="background:#1a1a18;"></span>Post (2026)</span>
+        </div>
+        <div class="chart-wrap" style="height:300px;">
+          <canvas id="loyaltyChart" role="img" aria-label="Horizontal bar chart comparing uptake by loyalty bucket."></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="note" style="margin-top:10px;">
+      The <strong>[01] bucket</strong> (customers getting their very first HelloFresh box) shows the largest lift by far (+4.4 ppts, jumping from 1.55% to 5.94%). This tells us the surcharge was scaring off brand-new customers who are usually extra sensitive to add-on charges. Mid-loyalty buckets (11 to 50 boxes) show a steady lift around +1.7 ppts. Highly loyal customers (51+) barely moved, likely because they were already willing to pay the extra fee.
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num">03</span>
+      <h2 class="section-title">First-time trial</h2>
+    </div>
+    <div class="card" style="margin-bottom:14px;">
+      <div class="card-title">First-time orders per week: 2025 vs. 2026 W1-W16</div>
+      <div class="legend">
+        <span class="leg"><span class="leg-sq" style="background:rgba(154,152,144,0.6);"></span>2025 W1-W16 (surcharged)</span>
+        <span class="leg"><span class="leg-sq" style="background:rgba(26,26,24,0.75);"></span>2026 W1-W16 (no surcharge)</span>
+      </div>
+      <div class="chart-wrap" style="height:320px;">
+        <canvas id="ftChart" role="img" aria-label="Grouped bar chart comparing first-time recipe orders per week for 2025 vs 2026. 2026 is consistently higher, with large spikes at W04 and W08 and W15."></canvas>
+      </div>
+      <div class="note" style="margin-top:10px;">We saw an average of 2,382 first-time orders per week post-removal versus 1,297 in the baseline. That is an 84% increase. Dropping the price barrier clearly pushed more people to try the recipe across all weeks. The 2026 spike weeks (W04, W08, W15) line up exactly with Sticky Bang Bang Salmon Bowls appearing at slot 1029.</div>
+    </div>
+
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num">04</span>
+      <h2 class="section-title">Recipe ratings: post-cook satisfaction</h2>
+    </div>
+    <div class="kpi-grid-3" style="margin-bottom:14px;">
+      <div class="kpi">
+        <div class="kpi-label">Avg rating: baseline (2025 W1-W16)</div>
+        <div class="kpi-val"><strong>4.33</strong></div>
+        <div class="kpi-sub neu">Weighted avg across weeks</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Avg rating: post-removal (2026 W1-W16)</div>
+        <div class="kpi-val"><strong>4.24</strong></div>
+        <div class="kpi-sub down">↓ -0.09 vs baseline</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Rating scale</div>
+        <div class="kpi-val"><strong>1 to 5</strong></div>
+        <div class="kpi-sub neu">Weighted by orders per segment</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Weekly weighted average rating: 2025 W1-W16 vs. 2026 W1-W16</div>
+      <div class="legend">
+        <span class="leg"><span class="leg-sq" style="background:#9a9890;"></span>2025 W1-W16 baseline (surcharged)</span>
+        <span class="leg"><span class="leg-sq" style="background:#1a1a18;"></span>2026 W1-W16 (no surcharge)</span>
+      </div>
+      <div class="chart-wrap" style="height:220px;">
+        <canvas id="ratingChart" role="img" aria-label="Line chart of weekly weighted average recipe rating. Baseline 2025 weeks cluster around 4.33, post-removal 2026 weeks are consistently lower around 4.20-4.31, trending slightly downward."></canvas>
+      </div>
+      <div class="note">
+        Post-removal ratings dropped consistently across all 16 weeks. The most likely reason is <strong>audience dilution at scale</strong>. Because order volume tripled, a much wider mix of customers is now cooking this recipe. That includes people who might not be huge fans of salmon or this specific flavor profile. This happens a lot when you remove pricing barriers to get more people to try something. A -0.09 gap is small, but it is worth keeping an eye on. If the gap widens, we might have a real satisfaction problem instead of just a broader audience.
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num">05</span>
+      <h2 class="section-title">Observations and data quality flags</h2>
+    </div>
+    <div class="insight-grid">
+      
+      <div class="insight" style="border-color:#1a7a50;">
+        <div class="insight-title">Removing the price barrier drives massive trial <span class="badge badge-ok">Confirmed</span></div>
+        <div class="insight-body">Getting rid of the surcharge wiped out a major friction point and led to an 84% jump in first-time recipe orders. Customers (especially newer ones) jump at premium options the moment you drop the extra fee.</div>
+      </div>
+      <div class="insight" style="border-color:#b86a10;">
+        <div class="insight-title">Spike weeks belong to a single recipe <span class="badge badge-ok">Explained</span></div>
+        <div class="insight-body">All three 2026 spike weeks (W04, W08, W15) point to the same recipe: <strong>Sticky Bang Bang Salmon Bowls</strong>. This dish showed up 4 times in the 2025 baseline at normal uptake levels. That proves it has high organic demand at slot 1029 no matter the price. The spikes are about the recipe, not the missing fee. If you take those weeks out, the like-for-like post-period average is 2.7% vs a 2.09% baseline. That is a cleaner +0.6 ppt lift from dropping the surcharge.</div>
+      </div>
+      <div class="insight" style="border-color:#d4291a;">
+        <div class="insight-title">No experimental control group <span class="badge badge-red">Methodology gap</span></div>
+        <div class="insight-body">We rolled this change out to everyone at the same time. Looking at the same calendar window (2025 W1-W16) helps control for seasonality, but we still cannot separate the price drop from year-over-year demand trends, menu updates, or the novelty of the new UI tag. The trialist vs. control split in 2026-W01 also has some self-selection bias. People who picked this recipe might just care more about food in general. Keep in mind that all these findings are directional.</div>
+      </div>
+      
+    </div>
+  </div>
+
+
+</div>
+
+<div class="footer">
+  <span>HelloFresh Canada · Product Analytics · Internal Use Only</span>
+  <span>Prepared 2026 · Data through 2026-W18</span>
+</div>
+
+<script>
+const preWeeks = ['25-W01','25-W02','25-W03','25-W04','25-W05','25-W06','25-W07','25-W08','25-W09','25-W10','25-W11','25-W12','25-W13','25-W14','25-W15','25-W16'];
+const postWeeks = ['26-W01','26-W02','26-W03','26-W04','26-W05','26-W06','26-W07','26-W08','26-W09','26-W10','26-W11','26-W12','26-W13','26-W14','26-W15','26-W16'];
+const allWeeks = [...preWeeks, ...postWeeks];
+
+const preUptake = [3.309,3.464,1.684,1.005,1.16,2.558,3.252,2.114,1.5,2.336,1.262,2.826,1.08,0.691,1.144,2.081];
+const postUptake = [1.901,2.978,4.251,8.317,1.106,1.911,3.078,6.29,1.614,3.066,3.071,2.974,2.292,2.409,6.636,4.464];
+const spikes = [null,null,null,8.317,null,null,null,6.29,null,null,null,null,null,null,6.636,null];
+
+const preData = [...preUptake, ...Array(16).fill(null)];
+const postData = [...Array(16).fill(null), ...postUptake];
+const spikeData = [...Array(16).fill(null), ...spikes];
+
+const textCol = 'rgba(26,26,24,0.4)';
+const gridCol = 'rgba(26,26,24,0.07)';
+
+// ── Uptake chart ──────────────────────────────────────────────────────────
+const preRecipes = ['Creamy Garlic Salmon Penne','Sticky Bang Bang Salmon Bowls','Caribbean-Style Chicken','Beef Taco Flatbreads','Chorizo Arrabiata','Creamy Garlic Salmon Penne','Sticky Bang Bang Salmon Bowls','Cheesy BBQ Chicken Flatbread','Chicken Power Bowl','Creamy Garlic Salmon Penne','Jumbo Shrimp Scampi','Sticky Bang Bang Salmon Bowls','Creamy Garlic Salmon Penne','Rosy Salmon Penne Arrabiata','Zesty Salmon Over Creamy Fresh Linguine','Sticky Bang Bang Salmon Bowls'];
+const postRecipes = ['Roasted Honey-Mustard Salmon','Roasted Pesto Salmon','Soy-Maple Glazed Salmon','Sticky Bang Bang Salmon Bowls','Chicken and Clementine Salad','Creamy Salmon Florentine','Soy-Maple Glazed Salmon','Sticky Bang Bang Salmon Bowls','Chicken and Clementine Salad Bowls','Japanese Salmon Donburi Bowls','Japanese Salmon Donburi Bowls','Japanese Salmon Donburi Bowls','Japanese Salmon Donburi Bowls','Japanese Salmon Donburi Bowls','Sticky Bang Bang Salmon Bowls','Zesty Salmon and Creamy Fresh Linguine'];
+const allRecipes = [...preRecipes, ...postRecipes];
+
+new Chart(document.getElementById('uptakeChart'), {
+  type: 'line',
+  data: {
+    labels: allWeeks,
+    datasets: [
+      { label:'2025 W1-W16 (surcharged)', data: preData, borderColor:'#9a9890', borderWidth:1.5, pointRadius:1.5, pointBackgroundColor:'#9a9890', fill:false, tension:0.25, spanGaps:false },
+      { label:'2026 W1-W16 (no surcharge)', data: postData, borderColor:'#1a1a18', borderWidth:2, pointRadius:3, pointBackgroundColor:'#1a1a18', fill:false, tension:0.25, spanGaps:false },
+      { label:'Spike weeks', data: spikeData, borderColor:'transparent', pointRadius:8, pointBackgroundColor:'rgba(212,41,26,0.75)', pointStyle:'circle', fill:false, showLine:false }
+    ]
+  },
+  options: {
+    responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{display:false}, tooltip:{ callbacks:{
+      title: items => {
+        const i = items[0].dataIndex;
+        return allWeeks[i] + ' : ' + (allRecipes[i] || '');
+      },
+      label: ctx => ctx.dataset.label !== 'Spike weeks' ? ctx.dataset.label+': '+ctx.parsed.y.toFixed(2)+'%' : null
+    } } },
+    scales:{
+      x:{ ticks:{ color:textCol, maxRotation:45, autoSkip:true, maxTicksLimit:32, font:{size:10,family:'DM Mono'} }, grid:{ color:gridCol } },
+      y:{ ticks:{ color:textCol, callback:v=>v+'%', font:{size:10,family:'DM Mono'} }, grid:{ color:gridCol }, title:{ display:true, text:'Uptake %', color:textCol, font:{size:11} } }
+    }
+  }
+});
+
+// ── First-time orders chart ────────────────────────────────────────────────
+const ftColors = postUptake.map((_,i)=>[3,7,14].includes(i)?'rgba(212,41,26,0.7)':'rgba(26,26,24,0.75)');
+const genericWeeks = ['W01','W02','W03','W04','W05','W06','W07','W08','W09','W10','W11','W12','W13','W14','W15','W16'];
+
+new Chart(document.getElementById('ftChart'), {
+  type:'bar',
+  data:{
+    labels: genericWeeks,
+    datasets:[
+      { 
+        label: '2025 W1-W16', 
+        data: [2000, 3109, 1536, 876, 961, 2199, 2732, 1533, 1136, 1737, 919, 1940, 642, 376, 762, 1387], 
+        backgroundColor: 'rgba(154,152,144,0.6)', 
+        borderRadius: 3 
+      },
+      { 
+        label: '2026 W1-W16', 
+        data: [731, 2021, 3422, 6503, 768, 1428, 2262, 4289, 1206, 1905, 1969, 1912, 1445, 1512, 3909, 2825], 
+        backgroundColor: ftColors, 
+        borderRadius: 3 
+      }
+    ]
+  },
+  options:{
+    responsive:true, maintainAspectRatio:false,
+    layout: {
+      padding: { left: 20, right: 10, top: 10, bottom: 10 }
+    },
+    plugins:{ 
+        legend:{display:false}, 
+        tooltip:{ callbacks:{ label:ctx=>ctx.dataset.label + ': ' + ctx.parsed.y.toLocaleString() } } 
+    },
+    scales:{
+      x:{ ticks:{ color:textCol, maxRotation:45, font:{size:10,family:'DM Mono'} }, grid:{display:false} },
+      y:{ 
+          beginAtZero: true,
+          title: { display: true, text: 'First-time orders', color: textCol, font: { size: 11, family: 'DM Mono' } },
+          ticks:{ 
+              color:textCol, 
+              font:{size:10,family:'DM Mono'},
+              callback: function(value) { return value.toLocaleString(); }
+          }, 
+          grid:{ color:gridCol } 
+      }
+    }
+  }
+});
+
+// ── Subscription type chart ───────────────────────────────────────────────
+const subLabels=['Pescatarian','Beeffree','Flexitarian','Porkfree','Shellfishfree','Chefschoice','Quick','Protein','Light','Lowcalorie','Family','Veggie'];
+const subPre=[2.86,5.86,3.48,2.73,3.51,1.79,1.93,1.95,1.69,1.58,2.48,1.17];
+const subPost=[8.77,8.75,6.77,6.36,6.02,3.81,3.52,3.46,3.42,3.16,2.81,2.18];
+new Chart(document.getElementById('subChart'), {
+  type:'bar',
+  data:{
+    labels:subLabels,
+    datasets:[
+      { label:'Historical (pre)', data:subPre, backgroundColor:'rgba(154,152,144,0.6)', borderRadius:2 },
+      { label:'2026 (post)', data:subPost, backgroundColor:'rgba(26,26,24,0.8)', borderRadius:2 }
+    ]
+  },
+  options:{
+    indexAxis:'y', responsive:true, maintainAspectRatio:false,
+    plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:ctx=>ctx.dataset.label+': '+ctx.parsed.x.toFixed(2)+'%' } } },
+    scales:{
+      x:{ ticks:{ color:textCol, callback:v=>v+'%', font:{size:10,family:'DM Mono'} }, grid:{ color:gridCol } },
+      y:{ ticks:{ color:textCol, font:{size:11} }, grid:{display:false} }
+    }
+  }
+});
+
+// ── Loyalty bucket chart ──────────────────────────────────────────────────
+const loyaltyLabels = ['[01]','[02]','[03]','[04]','[05]','[06]','[07]','[08]','[09]','[10]','[11-15]','[16-20]','[21-25]','[26-30]','[31-35]','[36-40]','[41-45]','[46-50]','[51+]'];
+const loyaltyPre  = [1.55,1.32,1.29,1.52,1.97,1.78,1.77,1.70,1.72,1.78,1.58,1.66,1.70,1.89,2.02,2.02,2.16,2.33,2.50];
+const loyaltyPost = [5.94,3.42,3.21,3.17,3.39,3.40,3.38,3.32,3.32,3.17,3.46,3.43,3.53,3.58,3.58,3.63,3.50,3.55,3.30];
+
+// Keep natural ordering (01 to 51+)
+const lLabels = loyaltyLabels;
+const lPre    = loyaltyPre;
+const lPost   = loyaltyPost;
+
+new Chart(document.getElementById('loyaltyChart'), {
+  type: 'bar',
+  data: {
+    labels: lLabels,
+    datasets: [
+      { label: 'Pre (2025)', data: lPre, backgroundColor: 'rgba(154,152,144,0.6)', borderRadius: 2 },
+      { label: 'Post (2026)', data: lPost, backgroundColor: 'rgba(26,26,24,0.8)', borderRadius: 2 }
+    ]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: ctx => ctx.dataset.label + ': ' + ctx.parsed.x.toFixed(2) + '%',
+          afterBody: items => {
+            const i = items[0].dataIndex;
+            const lift = (lPost[i] - lPre[i]).toFixed(2);
+            return ['Lift: +' + lift + ' ppts'];
+          }
+        }
+      }
+    },
+    scales: {
+      x: { ticks: { color: textCol, callback: v => v + '%', font: { size: 10, family: 'DM Mono' } }, grid: { color: gridCol } },
+      y: { ticks: { color: textCol, font: { size: 11 } }, grid: { display: false } }
+    }
+  }
+});
+
+// ── Rating chart ──────────────────────────────────────────────────────────
+const ratingWeekLabels = ['W01','W02','W03','W04','W05','W06','W07','W08','W09','W10','W11','W12','W13','W14','W15','W16'];
+const preRating = [4.268,4.309,4.402,4.318,4.322,4.273,4.309,4.336,4.353,4.339,4.322,4.326,4.305,4.353,4.384,4.350];
+const postRating = [4.300,4.299,4.307,4.307,4.205,4.261,4.213,4.218,4.226,4.226,4.234,4.157,4.214,4.194,4.220,4.238];
+
+new Chart(document.getElementById('ratingChart'), {
+  type: 'line',
+  data: {
+    labels: ratingWeekLabels,
+    datasets: [
+      {
+        label: '2025 (surcharged)',
+        data: preRating,
+        borderColor: '#9a9890',
+        borderWidth: 1.5,
+        pointRadius: 3,
+        pointBackgroundColor: '#9a9890',
+        fill: false,
+        tension: 0.2
+      },
+      {
+        label: '2026 (no surcharge)',
+        data: postRating,
+        borderColor: '#1a1a18',
+        borderWidth: 2,
+        pointRadius: 3,
+        pointBackgroundColor: '#1a1a18',
+        fill: false,
+        tension: 0.2
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: ctx => ctx.dataset.label + ': ' + ctx.parsed.y.toFixed(3),
+          afterBody: items => {
+            const i = items[0].dataIndex;
+            const diff = (postRating[i] - preRating[i]).toFixed(3);
+            return ['YoY change: ' + (diff > 0 ? '+' : '') + diff];
+          }
+        }
+      }
+    },
+    scales: {
+      x: { ticks: { color: textCol, font: { size: 10, family: 'DM Mono' } }, grid: { color: gridCol } },
+      y: {
+        min: 4.0,
+        max: 4.6,
+        ticks: { color: textCol, font: { size: 10, family: 'DM Mono' }, callback: v => v.toFixed(2) },
+        grid: { color: gridCol },
+        title: { display: true, text: 'Avg rating (out of 5)', color: textCol, font: { size: 11 } }
+      }
+    }
+  }
+});
+</script>
+
+</body></html>

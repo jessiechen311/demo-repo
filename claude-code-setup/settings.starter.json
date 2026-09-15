@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "awsAuthRefresh": "aws sso login --profile sso-bedrock-user",
+  "env": {
+    "AWS_PROFILE": "sso-bedrock-user",
+    "AWS_REGION": "eu-west-1",
+    "CLAUDE_CODE_USE_BEDROCK": "1",
+    "ANTHROPIC_MODEL": "eu.anthropic.claude-opus-4-7"
+  },
+  "model": "eu.anthropic.claude-opus-4-7",
+  "theme": "dark",
+  "mcpServers": {
+    "databricks-sql": {
+      "type": "http",
+      "url": "https://hf-query-engine.cloud.databricks.com/api/2.0/mcp/sql",
+      "headers": {
+        "Authorization": "Bearer <YOUR_DATABRICKS_PAT>"
+      }
+    }
+  },
+  "permissions": {
+    "allow": [
+      "mcp__databricks__execute_sql_read_only",
+      "mcp__databricks__poll_sql_result",
+      "Read(//Users/<YOUR_USERNAME>/Claude/**)",
+      "Read(//tmp/**)",
+      "Bash(git --no-pager diff)",
+      "Bash(git --no-pager diff --stat)",
+      "Bash(git status)",
+      "Bash(git log *)",
+      "Bash(git fetch *)",
+      "Bash(git checkout *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(git branch *)",
+      "Bash(gh pr *)",
+      "Bash(gh api *)",
+      "Bash(python3 -c *)",
+      "Bash(python3 -m py_compile *)",
+      "Bash(pip3 install *)"
+    ],
+    "additionalDirectories": [
+      "/Users/<YOUR_USERNAME>/.claude",
+      "/Users/<YOUR_USERNAME>/Claude/Projects/Context files",
+      "/private/tmp"
+    ]
+  }
+}
